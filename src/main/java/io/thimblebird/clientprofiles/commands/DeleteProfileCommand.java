@@ -3,7 +3,6 @@ package io.thimblebird.clientprofiles.commands;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
-import io.thimblebird.clientprofiles.config.ClientProfilesConfig;
 import io.thimblebird.clientprofiles.config.ProfileConfig;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -37,17 +36,20 @@ public class DeleteProfileCommand {
 
     private static int execute(CommandSourceStack source, String profileName) {
         if (ProfileConfig.deleteProfile(profileName)) {
-            source.sendSuccess(Component.translatable("§4❌ §rSuccessfully deleted profile: %s", profileName), true);
+            source.sendSuccess(Component.translatable("§4❌§r Successfully deleted profile: %s", profileName), true);
 
-            if (ProfileConfig.getProfiles().size() > 0 && ClientProfilesConfig.CURRENT_PROFILE.get().equals(profileName)) {
+            if (ProfileConfig.getProfiles().size() > 0 && ProfileConfig.getCurrentProfileName().equals(profileName)) {
                 Optional<File> findFirst = ProfileConfig.getProfiles().stream().findFirst();
 
                 if (findFirst.isPresent()) {
                     String switchTo = findFirst.get().getName();
+
+                    // clear config dir before switching, as we have just deleted the currently active profile
+                    ProfileConfig.clearConfigDir();
                     ProfileConfig.switchProfile(switchTo);
 
-                    source.sendSuccess(Component.translatable("§6⚡ §rCurrent profile switched to: %s", switchTo), true);
-                    source.sendSuccess(Component.translatable("§9♦ §rPlease §crestart your game§r for changes to take effect."), true);
+                    source.sendSuccess(Component.translatable("§6⚡§r Current profile switched to: %s", switchTo), true);
+                    source.sendSuccess(Component.translatable("§9♦§r Please §crestart your game§r for changes to take effect."), true);
                 }
             }
 

@@ -24,28 +24,40 @@ public class ListProfilesCommand {
         Collection<File> profiles = ProfileConfig.getProfiles();
 
         if (profiles.size() > 0) {
-            source.sendSuccess(Component.translatable("Available profiles: "), true);
+            source.sendSuccess(Component.translatable("Available profiles: §7(§d*§7 = read-only)"), true);
 
             String profileName;
             for (File profile : profiles) {
+                boolean hasDisplayName;
                 profileName = profile.getName();
 
-                String prefix = " ⏵ ";
+                String prefix = " §8⏵§r ";
+                // highlight current profile
                 if (profileName.equals(ProfileConfig.getCurrentProfileName())) {
-                    prefix = " §6⏵ §r";
+                    prefix = " §6⏵§r ";
                 }
 
+                ProfileConfig profileConfig;
                 String displayName;
+                boolean readOnly;
                 try {
-                    displayName = ProfileConfig.loadProfile(profileName).displayName;
+                    profileConfig = ProfileConfig.loadProfile(profileName);
+                    displayName = profileConfig.displayName;
+                    hasDisplayName = !displayName.equals(profileName);
+                    readOnly = profileConfig.readOnly;
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
 
-                if (displayName.equals(profileName)) {
+                if (readOnly) {
+                    profileName += "§d*§r";
+                }
+
+                if (!hasDisplayName) {
                     source.sendSuccess(Component.literal(prefix + profileName), true);
                 } else {
-                    source.sendSuccess(Component.literal(prefix + displayName + " (" + profileName + ")"), true);
+                    profileName = "§7" + profileName;
+                    source.sendSuccess(Component.literal(prefix + displayName + " §8[" + profileName + "§8]"), true);
                 }
             }
 

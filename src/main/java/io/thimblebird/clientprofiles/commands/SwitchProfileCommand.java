@@ -3,7 +3,6 @@ package io.thimblebird.clientprofiles.commands;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
-import io.thimblebird.clientprofiles.config.ClientProfilesConfig;
 import io.thimblebird.clientprofiles.config.ProfileConfig;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -37,7 +36,7 @@ public class SwitchProfileCommand {
     private static int execute(CommandSourceStack source, String profileName) {
         // switch to the selected profile
         if (ProfileConfig.profileExists(profileName)) {
-            if (!ClientProfilesConfig.CURRENT_PROFILE.get().equals(profileName)) {
+            if (!ProfileConfig.getCurrentProfileName().equals(profileName)) {
                 ProfileConfig.switchProfile(profileName);
 
                 source.sendSuccess(Component.translatable("§6⚡ §rSuccessfully switched profile to: %s", profileName), true);

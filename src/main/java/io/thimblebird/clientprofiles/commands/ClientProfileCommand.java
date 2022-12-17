@@ -23,14 +23,29 @@ public class ClientProfileCommand {
         String currentProfile = ClientProfilesConfig.CURRENT_PROFILE.get();
 
         if (currentProfile.length() > 0 && ProfileConfig.profileExists(currentProfile)) {
+            ProfileConfig profileConfig;
+            boolean hasDisplayName;
             String displayName;
+            boolean readOnly;
             try {
-                displayName = ProfileConfig.loadProfile(currentProfile).displayName;
+                profileConfig = ProfileConfig.loadProfile(currentProfile);
+                displayName = profileConfig.displayName;
+                hasDisplayName = !displayName.equals(currentProfile);
+                readOnly = profileConfig.readOnly;
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
 
-            source.sendSuccess(Component.translatable("Current profile: %s (%s)", displayName, currentProfile), true);
+            if (readOnly) {
+                currentProfile += "§d*§r";
+            }
+
+            if (!hasDisplayName) {
+                source.sendSuccess(Component.translatable("§6Current profile§r: %s", currentProfile), true);
+            } else {
+                currentProfile = "§7" + currentProfile;
+                source.sendSuccess(Component.translatable("§6Current profile§r: %s §8[%s§8]", displayName, currentProfile), true);
+            }
 
             return 1;
         }

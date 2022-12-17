@@ -32,7 +32,7 @@ public class CreateProfileCommand {
             newProfileConfig.credits = source.getTextName();
             newProfileConfig.createProfile("You may include a comment about your profile here.");
 
-            source.sendSuccess(Component.translatable("§6⭐ §rSuccessfully created profile: %s", profileName), true);
+            source.sendSuccess(Component.translatable("§6⭐§r Successfully created profile: %s", profileName), true);
 
             return 1;
         }

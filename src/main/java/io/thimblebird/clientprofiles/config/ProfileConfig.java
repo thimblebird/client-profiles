@@ -13,8 +13,7 @@ import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.*;
 
-import static io.thimblebird.clientprofiles.ClientProfiles.MOD_COMMANDS_NAMESPACE;
-import static io.thimblebird.clientprofiles.ClientProfiles.MOD_ID;
+import static io.thimblebird.clientprofiles.ClientProfiles.*;
 
 public class ProfileConfig {
     private final String name;
@@ -184,25 +183,65 @@ public class ProfileConfig {
 
     public static void switchProfile(String profileName) {
         if (profileExists(profileName)) {
-            Path rootDir = getProfilePath(profileName);
-            Path destDir = FMLPaths.CONFIGDIR.get();
-
-            Collection<File> existingFilesAndDirs = FileUtils.listFilesAndDirs(destDir.toFile(), TrueFileFilter.INSTANCE, null);
-            existingFilesAndDirs.remove(destDir.toFile());
-            existingFilesAndDirs.remove(destDir.resolve(MOD_ID).toFile());
-            existingFilesAndDirs.remove(destDir.resolve(MOD_ID + "-client.toml").toFile());
+            Path newProfileRootDir = getProfilePath(profileName);
+            Path configRootDir = FMLPaths.CONFIGDIR.get();
+            String currentProfileName = getCurrentProfileName();
 
             try {
-                for (File file : existingFilesAndDirs) {
-                    FileUtils.forceDelete(file);
+                Collection<File> configRootExistingFiles = FileUtils.listFilesAndDirs(
+                        configRootDir.toFile(),
+                        TrueFileFilter.INSTANCE,
+                        null
+                );
+
+                // remove the mod's files from this collection
+                configRootExistingFiles.remove(configRootDir.toFile());
+                configRootExistingFiles.remove(configRootDir.resolve(MOD_ID).toFile());
+                configRootExistingFiles.remove(configRootDir.resolve(MOD_ID + "-client.toml").toFile());
+
+                // if the current profile is read-only, delete everything, discarding changes
+                if (profileExists(currentProfileName)) {
+                    Path currentProfileRootDir = getProfilePath(currentProfileName);
+                    ProfileConfig currentProfile = loadProfile(currentProfileName);
+
+                    for (File file : configRootExistingFiles) {
+                        if (!currentProfile.readOnly) {
+                            // otherwise, cut all files into the current profile's directory, effectively "saving" changes
+                            FileUtils.copyToDirectory(file, currentProfileRootDir.toFile());
+                        }
+                        FileUtils.forceDelete(file);
+                    }
                 }
 
-                FileUtils.copyDirectory(rootDir.toFile(), destDir.toFile());
+                // copy profile files into root
+                FileUtils.copyDirectory(newProfileRootDir.toFile(), configRootDir.toFile());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
 
             ClientProfilesConfig.CURRENT_PROFILE.set(profileName);
+        }
+    }
+
+    public static void clearConfigDir() {
+        try {
+            Path configRootDir = FMLPaths.CONFIGDIR.get();
+            Collection<File> configRootExistingFiles = FileUtils.listFilesAndDirs(
+                    configRootDir.toFile(),
+                    TrueFileFilter.INSTANCE,
+                    null
+            );
+
+            // remove the mod's files from this collection
+            configRootExistingFiles.remove(configRootDir.toFile());
+            configRootExistingFiles.remove(configRootDir.resolve(MOD_ID).toFile());
+            configRootExistingFiles.remove(configRootDir.resolve(MOD_ID + "-client.toml").toFile());
+
+            for (File file : configRootExistingFiles) {
+                FileUtils.forceDelete(file);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
