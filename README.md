@@ -27,11 +27,11 @@ the game_ currently.
 
 | command                                  |
 |------------------------------------------|
-| /configprofile                           |
-| /configprofile create _\<profile_name\>_ |
-| /configprofile delete _\<profile_name\>_ |
-| /configprofile list                      |
-| /configprofile switch _\<profile_name\>_ |
+| /clientprofile                           |
+| /clientprofile create _\<profile_name\>_ |
+| /clientprofile delete _\<profile_name\>_ |
+| /clientprofile list                      |
+| /clientprofile switch _\<profile_name\>_ |
 
 
 ## License
