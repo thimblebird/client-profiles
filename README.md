@@ -13,10 +13,6 @@ directories currently present inside the `/config/` folder will
 effectively overwrite (or _"save"_) that profile inside
 `/config/clientprofiles/<profileName>/`.
 
-Note that there's no designated `save` command _yet_, making
-switching profiles the only way to save profiles _from within
-the game_ currently.
-
 ⚠ **Be careful not to lose your configs. Things _might_ go wrong.** ⚠
 
 ⚠ **You've been warned.** ⚠
@@ -32,6 +28,7 @@ the game_ currently.
 | /clientprofile delete _\<profile_name\>_ |
 | /clientprofile list                      |
 | /clientprofile switch _\<profile_name\>_ |
+| /clientprofile save                      |
 
 
 ## License
