@@ -3,9 +3,10 @@ package io.thimblebird.clientprofiles.config;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import io.thimblebird.clientprofiles.ClientProfiles;
 import io.thimblebird.clientprofiles.util.ClassUtils;
+import io.thimblebird.clientprofiles.util.ConfigUtils;
+import io.thimblebird.clientprofiles.util.ProfileUtils;
 import net.minecraftforge.fml.loading.FMLPaths;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.TrueFileFilter;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,34 +17,33 @@ import java.util.*;
 import static io.thimblebird.clientprofiles.ClientProfiles.*;
 
 public class ProfileConfig {
-    private final String name;
     private final Path profilesPath;
 
+    @SuppressWarnings("unused")
+    public String id;
     @SuppressWarnings("unused")
     public String displayName;
     @SuppressWarnings("unused")
     public String credits;
     public boolean readOnly = false;
-    @SuppressWarnings("unused")
-    public ArrayList<String> lockedFiles = new ArrayList<>();
 
-    public ProfileConfig(String profileName) {
-        this.name = profileName;
+    public ProfileConfig(String profileId) {
         this.profilesPath = FMLPaths.CONFIGDIR.get().resolve(MOD_ID);
+        this.id = profileId;
 
         // default options
         HashMap<String, Object> options = new HashMap<>();
-        options.put("displayName", profileName);
+        options.put("id", profileId);
+        options.put("displayName", profileId);
         options.put("credits", "You ♥");
-        options.put("lockedFiles", new ArrayList<>());
         options.put("readOnly", false);
 
         setFields(options);
     }
 
-    public ProfileConfig(String profileName, HashMap<String, ?> options) {
-        this.name = profileName;
+    public ProfileConfig(String profileId, HashMap<String, ?> options) {
         this.profilesPath = FMLPaths.CONFIGDIR.get().resolve(MOD_ID);
+        this.id = profileId;
 
         setFields(options);
     }
@@ -74,40 +74,8 @@ public class ProfileConfig {
         return field.get(this);
     }
 
-    @SuppressWarnings("unused")
-    private static String getConfigName() {
-        //return String.join("--", "_clientprofile", this.name);
-        return "_clientprofile";
-    }
-
-    @SuppressWarnings("unused")
-    private static String getConfigFileName() {
-        return getConfigName() + ".toml";
-    }
-
-    @SuppressWarnings("unused")
-    private static String getConfigRootPath() {
-        //return String.join(".", MOD_ID, this.name);
-        return MOD_COMMANDS_NAMESPACE;
-    }
-
-    @SuppressWarnings("unused")
-    private static String getConfigPath(String part) {
-        return String.join(".", getConfigRootPath(), part);
-    }
-
-    @SuppressWarnings("unused")
-    public static Path getProfilesPath() {
-        return FMLPaths.CONFIGDIR.get().resolve(MOD_ID);
-    }
-
-    @SuppressWarnings("unused")
-    public static Path getProfilePath(String profileName) {
-        return getProfilesPath().resolve(profileName);
-    }
-
     public void createProfile(String profileComment) {
-        Path profileDir = this.profilesPath.resolve(this.name);
+        Path profileDir = this.profilesPath.resolve(this.id);
         File profile = profileDir.toFile();
         boolean profileDirCreated;
 
@@ -120,17 +88,17 @@ public class ProfileConfig {
         }
 
         if (profileDirCreated) {
-            CommentedFileConfig config = CommentedFileConfig.of(profileDir.resolve(getConfigFileName()));
+            CommentedFileConfig config = CommentedFileConfig.of(profileDir.resolve(ConfigUtils.getFileName()));
             config.load();
             config.clear(); // config builder? parse mode "add"?
 
             if (profileComment.length() > 0) {
-                config.setComment(getConfigRootPath(), profileComment);
+                config.setComment(ConfigUtils.getRootPath(), profileComment);
             }
 
             Arrays.stream(this.getClass().getFields()).toList().forEach(field -> {
                 try {
-                    config.set(getConfigPath(field.getName()), field.get(this));
+                    config.set(ConfigUtils.getPath(field.getName()), field.get(this));
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
                 }
@@ -141,35 +109,38 @@ public class ProfileConfig {
         }
     }
 
-    public static ProfileConfig loadProfile(String profileName) throws IOException {
-        if (!profileExists(profileName)) {
-            throw new IOException("Couldn't load non-existing profile: " + profileName);
+    public static ProfileConfig loadProfile(String profileId) throws IOException {
+        if (!ProfileUtils.exists(profileId)) {
+            throw new IOException("Couldn't load non-existing profile: " + profileId);
         }
 
-        CommentedFileConfig config = CommentedFileConfig.of(getProfilePath(profileName).resolve(getConfigFileName()));
-        HashMap<String, Object> options = new HashMap<>();
-
-        config.load();
-
-        for (Field field : Arrays.stream(ProfileConfig.class.getFields()).toList()) {
-            String fieldName = field.getName();
-            String fieldPath = getConfigPath(fieldName);
-
-            if (config.contains(fieldPath)) {
-                options.put(fieldName, config.get(fieldPath));
-            }
-        }
-
-        config.close();
-
-        return new ProfileConfig(profileName, options);
+        return new ProfileConfig(profileId, ProfileUtils.getConfig(ProfileUtils.getPath(profileId)));
     }
 
-    public static boolean deleteProfile(String profileName) {
-        if (profileExists(profileName)) {
+    // current profile (reads `_clientprofile.toml` in the root directory, if present)
+    public static ProfileConfig loadProfile() throws IOException {
+        Path rootDir = FMLPaths.CONFIGDIR.get();
+        Path rootProfile = rootDir.resolve(ConfigUtils.getFileName());
+
+        if (!FileUtils.directoryContains(rootDir.toFile(), rootProfile.toFile())) {
+            throw new IOException("No active profile; `" + ConfigUtils.getFileName() + "` not found");
+        }
+
+        HashMap<String, Object> options = ProfileUtils.getConfig(rootDir);
+        String profileId = options.get("id").toString();
+
+        if (!ProfileUtils.exists(profileId)) {
+            throw new IOException("Couldn't load non-existing profile: " + profileId);
+        }
+
+        return new ProfileConfig(profileId, options);
+    }
+
+    public static boolean deleteProfile(String profileId) {
+        if (ProfileUtils.exists(profileId)) {
             try {
-                if (!loadProfile(profileName).readOnly) {
-                    FileUtils.deleteDirectory(getProfilePath(profileName).toFile());
+                if (!loadProfile(profileId).readOnly) {
+                    FileUtils.deleteDirectory(ProfileUtils.getPath(profileId).toFile());
 
                     return true;
                 }
@@ -181,30 +152,19 @@ public class ProfileConfig {
         return false;
     }
 
-    public static void switchProfile(String profileName) {
-        if (profileExists(profileName)) {
-            Path newProfileRootDir = getProfilePath(profileName);
+    public static void switchProfile(String profileId) {
+        if (ProfileUtils.exists(profileId)) {
+            Path newProfileRootDir = ProfileUtils.getPath(profileId);
             Path configRootDir = FMLPaths.CONFIGDIR.get();
-            String currentProfileName = getCurrentProfileName();
+            String currentProfileName = ProfileUtils.getId();
 
             try {
-                Collection<File> configRootExistingFiles = FileUtils.listFilesAndDirs(
-                        configRootDir.toFile(),
-                        TrueFileFilter.INSTANCE,
-                        null
-                );
-
-                // remove the mod's files from this collection
-                configRootExistingFiles.remove(configRootDir.toFile());
-                configRootExistingFiles.remove(configRootDir.resolve(MOD_ID).toFile());
-                configRootExistingFiles.remove(configRootDir.resolve(MOD_ID + "-client.toml").toFile());
-
                 // if the current profile is read-only, delete everything, discarding changes
-                if (profileExists(currentProfileName)) {
-                    Path currentProfileRootDir = getProfilePath(currentProfileName);
+                if (ProfileUtils.exists(currentProfileName)) {
+                    Path currentProfileRootDir = ProfileUtils.getPath(currentProfileName);
                     ProfileConfig currentProfile = loadProfile(currentProfileName);
 
-                    for (File file : configRootExistingFiles) {
+                    for (File file : ConfigUtils.getRootFiles()) {
                         if (!currentProfile.readOnly) {
                             // otherwise, cut all files into the current profile's directory, effectively "saving" changes
                             FileUtils.copyToDirectory(file, currentProfileRootDir.toFile());
@@ -218,59 +178,44 @@ public class ProfileConfig {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-
-            ClientProfilesConfig.CURRENT_PROFILE.set(profileName);
         }
     }
 
-    public static void clearConfigDir() {
-        try {
-            Path configRootDir = FMLPaths.CONFIGDIR.get();
-            Collection<File> configRootExistingFiles = FileUtils.listFilesAndDirs(
-                    configRootDir.toFile(),
-                    TrueFileFilter.INSTANCE,
-                    null
-            );
+    public static boolean saveProfile(String profileId) {
+        if (ProfileUtils.exists(profileId)) {
+            // copy files from root into profile dir
+            try {
+                Path profileRootDir = ProfileUtils.getPath(profileId);
+                ProfileConfig profile = loadProfile(profileId);
 
-            // remove the mod's files from this collection
-            configRootExistingFiles.remove(configRootDir.toFile());
-            configRootExistingFiles.remove(configRootDir.resolve(MOD_ID).toFile());
-            configRootExistingFiles.remove(configRootDir.resolve(MOD_ID + "-client.toml").toFile());
+                if (!profile.readOnly) {
+                    // create a backup profile directory in case something goes wrong
+                    Path backupProfileDir = profileRootDir.getParent().resolve("___tmp_backup-" + profileId);
 
-            for (File file : configRootExistingFiles) {
-                FileUtils.forceDelete(file);
+                    try {
+                        FileUtils.copyDirectory(profileRootDir.toFile(), backupProfileDir.toFile());
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    FileUtils.deleteDirectory(profileRootDir.toFile());
+
+                    if (new File(profileRootDir.toString()).mkdir()) {
+                        // copy root files into the profile directory
+                        for (File file : ConfigUtils.getRootFiles()) {
+                            FileUtils.copyToDirectory(file, profileRootDir.toFile());
+                        }
+
+                        FileUtils.deleteDirectory(backupProfileDir.toFile());
+
+                        return true;
+                    }
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
-    }
 
-    public static boolean profileExists(String profileName) {
-        try {
-            return FileUtils.directoryContains(getProfilesPath().toFile(), getProfilePath(profileName).toFile());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static boolean profilesExists() {
-        try {
-            Path profilesPath = getProfilesPath();
-            return !FileUtils.isEmptyDirectory(profilesPath.toFile());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static String getCurrentProfileName() {
-        return ClientProfilesConfig.CURRENT_PROFILE.get();
-    }
-
-    public static Collection<File> getProfiles() {
-        File rootDir = getProfilesPath().toFile();
-        Collection<File> filesAndDirs = FileUtils.listFilesAndDirs(rootDir, TrueFileFilter.INSTANCE, null);
-        filesAndDirs.removeIf((thing) -> !thing.isDirectory());
-        filesAndDirs.remove(rootDir);
-        return filesAndDirs;
+        return false;
     }
 }

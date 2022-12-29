@@ -3,6 +3,7 @@ package io.thimblebird.clientprofiles;
 import com.mojang.logging.LogUtils;
 import io.thimblebird.clientprofiles.config.ClientProfilesConfig;
 import io.thimblebird.clientprofiles.config.ProfileConfig;
+import io.thimblebird.clientprofiles.util.ProfileUtils;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
@@ -29,16 +30,26 @@ public class ClientProfiles {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event)
         {
+            if (!ClientProfilesConfig.ENABLE.get()) {
+                LOGGER.warn("Client Profiles are disabled; see `/config/clientprofiles-client.toml` to enable again.");
+                return;
+            }
+
             if (ClientProfilesConfig.CREATE_DEFAULT.get()) {
                 // setup default profile config
                 HashMap<String, Object> options = new HashMap<>();
 
-                options.put("displayName", "Default Profile");
-                options.put("credits", "You ♥");
+                options.put("displayName", "Default");
+                options.put("credits", "Every developer of every mod ♥");
                 options.put("readOnly", true);
 
                 ProfileConfig defaultProfileConfig = new ProfileConfig("default", options);
-                defaultProfileConfig.createProfile("This is the default profile; created when first starting the game.");
+                defaultProfileConfig.createProfile("Copy this profile and create your own! (remember to change `readOnly` to `false`)");
+            }
+
+            // switch to default profile if there is no active profile currently
+            if (ProfileUtils.getId().isEmpty() && ProfileUtils.exists(ClientProfilesConfig.DEFAULT_PROFILE.get())) {
+                ProfileConfig.switchProfile(ClientProfilesConfig.DEFAULT_PROFILE.get());
             }
         }
     }

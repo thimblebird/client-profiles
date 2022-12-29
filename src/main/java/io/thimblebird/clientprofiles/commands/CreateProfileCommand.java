@@ -3,6 +3,7 @@ package io.thimblebird.clientprofiles.commands;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import io.thimblebird.clientprofiles.config.ProfileConfig;
+import io.thimblebird.clientprofiles.util.ProfileUtils;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -26,11 +27,11 @@ public class CreateProfileCommand {
 
     private static int execute(CommandSourceStack source, String profileName) {
         // create a new profile
-        if (!ProfileConfig.profileExists(profileName)) {
+        if (!ProfileUtils.exists(profileName)) {
             ProfileConfig newProfileConfig = new ProfileConfig(profileName);
 
             newProfileConfig.credits = source.getTextName();
-            newProfileConfig.createProfile("You may include a comment about your profile here.");
+            newProfileConfig.createProfile("You may include a profile description here.");
 
             source.sendSuccess(Component.translatable("§6⭐§r Successfully created profile: %s", profileName), true);
 
@@ -41,7 +42,7 @@ public class CreateProfileCommand {
                 "\n",
                 "Couldn't create profile '%s' for some reason!",
                 "Profile exists: [%s]"
-        ), profileName, ProfileConfig.profileExists(profileName)));
+        ), profileName, ProfileUtils.exists(profileName)));
 
         return -1;
     }

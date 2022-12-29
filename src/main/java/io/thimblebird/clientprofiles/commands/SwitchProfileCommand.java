@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import io.thimblebird.clientprofiles.config.ProfileConfig;
+import io.thimblebird.clientprofiles.util.ProfileUtils;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -15,28 +16,32 @@ import static io.thimblebird.clientprofiles.ClientProfiles.MOD_COMMANDS_NAMESPAC
 
 public class SwitchProfileCommand {
     private static final SuggestionProvider<CommandSourceStack> AVAILABLE_PROFILES = (command, input) -> SharedSuggestionProvider.suggest(
-            ProfileConfig.getProfiles().stream().map(File::getName).map(StringArgumentType::escapeIfRequired), input
+            ProfileUtils.getAll().stream().map(File::getName).map(StringArgumentType::escapeIfRequired), input
     );
 
     public SwitchProfileCommand(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
-                Commands.literal(MOD_COMMANDS_NAMESPACE).then(
-                Commands.literal("switch").then(
-                        Commands.argument("profileName", StringArgumentType.string())
-                                .suggests(AVAILABLE_PROFILES)
-                                .executes((command) -> execute(
-                                        command.getSource(),
-                                        StringArgumentType.getString(command, "profileName")
-                                ))
-                )
-                )
+                Commands.literal(MOD_COMMANDS_NAMESPACE)
+                        .then(
+                            Commands.literal("switch")
+                                    .then(
+                                            Commands.argument("profileName", StringArgumentType.string())
+                                                    .suggests(AVAILABLE_PROFILES)
+                                                    .executes((command) -> execute(
+                                                            command.getSource(),
+                                                            StringArgumentType.getString(command, "profileName")
+                                                    ))
+                                    )
+                        )
         );
     }
 
     private static int execute(CommandSourceStack source, String profileName) {
         // switch to the selected profile
-        if (ProfileConfig.profileExists(profileName)) {
-            if (!ProfileConfig.getCurrentProfileName().equals(profileName)) {
+        if (ProfileUtils.exists(profileName)) {
+            String currentProfileId = ProfileUtils.getId();
+
+            if (currentProfileId.isEmpty() || !currentProfileId.equals(profileName)) {
                 ProfileConfig.switchProfile(profileName);
 
                 source.sendSuccess(Component.translatable("§6⚡ §rSuccessfully switched profile to: %s", profileName), true);
@@ -54,7 +59,7 @@ public class SwitchProfileCommand {
                 "\n",
                 "Couldn't switch to profile '%s' for some reason!",
                 "Profile exists: [%s]"
-        ), profileName, ProfileConfig.profileExists(profileName)));
+        ), profileName, ProfileUtils.exists(profileName)));
 
         return -1;
     }
