@@ -15,7 +15,7 @@ displayTest="IGNORE_ALL_VERSION"
 description='''
 Swap out the whole config folder and its contents using commands.
 
-/clientprofile *
+/clientprofile
 '''
 
 [[dependencies.clientprofiles]]
